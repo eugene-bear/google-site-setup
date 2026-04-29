@@ -1,0 +1,28 @@
+node_modules/
+dist/
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+*.key.json
+service-account*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local one-off scripts (historical / pre-1.2 workarounds — superseded by CLI commands)
+add-gsc-owner.cjs
+cleanup-wrong-account.cjs
+inspect.cjs
+mark-key-events.cjs
+refactor-gtm.cjs
+setup-gtm-events.cjs
+verify-url-prefix.cjs
+
+# Logs
+npm-debug.log*
+*.log
