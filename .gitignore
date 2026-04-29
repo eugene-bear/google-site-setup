@@ -1,5 +1,4 @@
 node_modules/
-dist/
 
 # Local env / secrets
 .env
@@ -13,6 +12,7 @@ service-account*.json
 Thumbs.db
 .vscode/
 .idea/
+.claude/
 
 # Local one-off scripts (historical / pre-1.2 workarounds — superseded by CLI commands)
 add-gsc-owner.cjs

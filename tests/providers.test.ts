@@ -87,6 +87,10 @@ describe("GA4 provider", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Pre-check: provider asserts the configured account is in accounts.list()
+    admin.accounts.list.mockResolvedValue({
+      data: { accounts: [{ name: "accounts/123" }] },
+    });
   });
 
   it("creates property and data stream when none exist", async () => {
@@ -202,6 +206,10 @@ describe("GTM provider", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Pre-check: provider asserts the configured account is in accounts.list()
+    (tagmanager.accounts as any).list = vi.fn().mockResolvedValue({
+      data: { account: [{ accountId: "1" }] },
+    });
   });
 
   it("skips creation when container with matching domain exists", async () => {
@@ -335,33 +343,60 @@ describe("GSC provider", () => {
 
     const result = await provisionGSC({
       domain: "newsite.com",
+      verificationMethod: "dns",
     });
 
     expect(result.skipped).toBe(false);
     expect(result.verified).toBe(false);
     expect(result.verificationToken).toBe("google-site-verification=abc123def456");
     expect(result.siteUrl).toBe("sc-domain:newsite.com");
+    expect(result.verificationMethod).toBe("dns");
   });
 
-  it("submits sitemap when URL is provided", async () => {
+  it("submits sitemap when URL is provided and site verifies", async () => {
     searchconsole.sites.get.mockRejectedValue(new Error("Not found"));
     searchconsole.sites.add.mockResolvedValue({});
     siteVerification.webResource.getToken.mockResolvedValue({
       data: { token: "google-site-verification=xyz" },
     });
-    siteVerification.webResource.insert.mockRejectedValue(new Error("fail"));
+    // Verification record is already live → insert succeeds → sitemap submits
+    siteVerification.webResource.insert.mockResolvedValue({ data: { id: "withmap.com" } });
     searchconsole.sitemaps.submit.mockResolvedValue({});
 
     const result = await provisionGSC({
       domain: "withmap.com",
       sitemapUrl: "https://withmap.com/sitemap.xml",
+      verificationMethod: "dns",
     });
 
+    expect(result.verified).toBe(true);
     expect(result.sitemapSubmitted).toBe(true);
     expect(searchconsole.sitemaps.submit).toHaveBeenCalledWith({
       siteUrl: "sc-domain:withmap.com",
       feedpath: "https://withmap.com/sitemap.xml",
     });
+  });
+
+  it("defers sitemap when site is not verified yet", async () => {
+    searchconsole.sites.get.mockRejectedValue(new Error("Not found"));
+    searchconsole.sites.add.mockResolvedValue({});
+    siteVerification.webResource.getToken.mockResolvedValue({
+      data: { token: "google-site-verification=zzz" },
+    });
+    siteVerification.webResource.insert.mockRejectedValue(new Error("not live"));
+
+    const result = await provisionGSC({
+      domain: "deferred.com",
+      sitemapUrl: "https://deferred.com/sitemap.xml",
+      verificationMethod: "meta",
+    });
+
+    expect(result.verified).toBe(false);
+    expect(result.sitemapSubmitted).toBe(false);
+    expect(result.sitemapDeferred).toBe(true);
+    expect(result.sitemapPending).toBe("https://deferred.com/sitemap.xml");
+    expect(result.followUpCommand).toContain("status deferred.com --fix");
+    expect(searchconsole.sitemaps.submit).not.toHaveBeenCalled();
   });
 
   it("handles sitemap submission failure gracefully", async () => {
