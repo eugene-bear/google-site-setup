@@ -7,11 +7,13 @@ import { addOwnerCommand } from "./commands/add-owner.js";
 import { addEventCommand } from "./commands/add-event.js";
 import { addVerificationCommand } from "./commands/add-verification.js";
 import { setupConversionsCommand } from "./commands/setup-conversions.js";
+import { installSkillCommand, uninstallSkillCommand } from "./commands/install-skill.js";
+import { autoPromptInstallSkill } from "./skill-install.js";
 const program = new Command();
 program
     .name("google-site-setup")
     .description("Provision GA4, GTM, and Search Console for new websites")
-    .version("1.2.0");
+    .version("1.3.0");
 program
     .command("provision")
     .description("Create GA4 property, GTM container, and Search Console site")
@@ -72,4 +74,13 @@ program
     .option("--platforms <list>", "Comma-separated platforms: ads,meta,clarity,linkedin (default: all)")
     .option("--json", "Output results as JSON")
     .action(setupConversionsCommand);
+program
+    .command("install-skill")
+    .description("Install the Claude Code skill into ~/.claude/skills/google-site-setup")
+    .action(installSkillCommand);
+program
+    .command("uninstall-skill")
+    .description("Remove the Claude Code skill from ~/.claude/skills/google-site-setup")
+    .action(uninstallSkillCommand);
+await autoPromptInstallSkill();
 program.parse();
